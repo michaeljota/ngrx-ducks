@@ -324,7 +324,7 @@ export class Component implements OnInit {
   constructor(private readonly store: Store<AppState>) {}
   
   ngOnInit() {
-    this.heroes = this.store.select(selectHeroesList).pipe(startWith([]));
+    this.heroes = this.store.select(selectHeroesList);
   }
 }
 ```
@@ -348,6 +348,8 @@ Useful tips for Angular applications with `@ngrx` platform.
 *Consider* making the unique name related to the component.
 
 *Consider* exporting the actions, the type and the enum of the actions types from an action file.
+
+*Consider* using named properties instead of generic payload
 
 *Why?* Using classes for actions allow to take advantage of the discriminatory types of Typescript.
 
@@ -373,17 +375,17 @@ export type ComponentActionType =
 
 export class LoadModel implements Action {
   public readonly type = ComponentActions.Load;
-  constructor(public readonly payload: string) {}
+  constructor(public readonly modelId: string) {}
 }
 
 export class LoadModelSuccess implements Action {
   public readonly type = ComponentActions.LoadSuccess;
-  constructor(public readonly payload: Readonly<Model>) {}
+  constructor(public readonly model: Readonly<Model>) {}
 }
 
 export class SaveModel implements Action {
   public readonly type = ComponentActions.Save;
-  constructor(public readonly payload: Readonly<Model>) {}
+  constructor(public readonly model: Readonly<Model>) {}
 }
 
 export class SaveModelSuccess implements Action {
@@ -402,6 +404,8 @@ export class SaveModelSuccess implements Action {
 *Consider* exporting the dispatcher service from a dispatcher file.
 
 *Consider* registering the dispatcher in the feature module as a provider.
+
+*Consider* using memoize functions methods.
 
 *Why?* A dispatcher service allows you to take advantage of Angular Dependency Injection.
 
@@ -482,17 +486,15 @@ export class ComponentEffects {
 
   @Effect()
   public readonly getModel = this.actions.pipe(
-    ofType(ComponentActions.Load),
-    switchMap((action: LoadModel) => this.service.get(action.payload)),
+    ofType<LoadModel>(ComponentActions.Load),
+    switchMap(({ modelId }) => this.service.get(modelId)),
     map(model => this.dispatcher.loadSuccess(model)),
   );
 
   @Effect({ dispatch: false })
   public readonly saveModel = this.actions.pipe(
-    ofType(ComponentActions.Save),
-    switchMap((action: SaveModel) =>
-      this.service.update(action.payload.id, action.payload),
-    ),
+    ofType<SaveModel>(ComponentActions.Save),
+    switchMap(({ model }) => this.service.update(model.id, model)),
   );
 }
 ```
@@ -530,14 +532,14 @@ export class ComponentState {
  * @type {ActionReducer<ComponentState,ComponentType>}
  */
 export function componentReducer(
-  state: ComponentState = new ComponentState(),
+  state: ComponentState,
   action: ComponentType,
 ): ComponentState {
   switch (action.type) {
     case ComponentActions.LoadSuccess:
       return {
         ...state,
-        model: action.payload,
+        model: action.model,
       };
     default:
       return state;
@@ -550,39 +552,88 @@ export function componentReducer(
 
 *Consider* exporting a feature selector in the store configuration.
 
-*Consider* using selectors to take the property you need.
+*Consider* using `select` pipe operator with a function argument to select component state and properties.
 
-*Why?* Selectors are a type safe approach to return an observable property of the state.
+*Consider* create a new selector file only if you are using a composed or complex selectors.  
+
+*Why?* Selectors are a type safe approach to return an observable of the feature state.
+
+*Why?* pipe operators are typed so they are also a type safe approach to get the properties.
 
 ```typescript
 // Consider
-/* component.selectors.ts */
-import { createSelector } from '@ngrx/store';
+/* feature-store.module.ts */
+...
+import { createFeatureSelector } from '@ngrx/store';
+...
 
-import { featureState } from './../feature.module';
+export const selectFeatureState = createFeatureSelector('feature');
 
-export const selectComponent = createSelector(
-  featureState,
-  state => state.details,
-);
+/* component.component.ts */
+...
+export class ComponentComponent {
+  models: Observable<Model[]>
 
-export const selectHero = createSelector(
-  selectComponent,
-  state => state.hero,
-);
+  constructor(private readonly store: Store) {
+    this.models = store.select(selectFeatureState).pipe(
+      select((state) => state.component.models),
+    );
+  }
+}
 ```
+
+### Entities
+
+##### Style NGRX-06
+
+*Consider* using the `@ngrx/entity` module to create and handle entities.
+
+*Consider* placing the entity adapter inside the reducer file.
+
+*Consider* exporting the selectors generated from the entity adapter.
+
+*Consider* using `select` pipe operator and the entity adapter selectors to  select entities properties.
+
+*Why* The adapter is a function helper to manage the entity state, so you would need it there.
+
+```typescript
+// Consider
+/* component.reducer.ts */
+import {
+  createEntityAdapter,
+  EntityState,
+  Dictionary,
+  Update,
+} from '@ngrx/entity';
+
+import { Model } from '../model';
+
+const modelAdapter = createEntityAdapter<Model>();
+
+export const modelSelectors = modelAdapter.getSelectors();
+
+export class ComponentState implements EntityState<Model> {
+  public readonly ids: number[] | string[] = [];
+  public readonly entities: Dictionary<Model> = {};
+  public readonly anotherProperty: boolean;
+}
+
+```
+
 
 ### Stores
 
-##### Style NGRX-06
+##### Style NGRX-07
 
 *Consider* use an Angular barrel module to setup the Store. 
 
 *Consider* setup and export the state from the module.
 
+*Consider* setup and export the selector from the module.
+
 *Why?* Barrel modules are a common practice in Angular, and a recommended way to keep your modules cleaner.
 
-*Why?* Your initial state and the store reducers will be easy to find after scaling. 
+*Why?* The store state, reducers and selectors will be easy to find after scaling.
 
 ```typescript
 // Avoid
