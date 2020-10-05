@@ -1,6 +1,6 @@
-# ngrx-ducks: A proposal for the ducks bundles in Angular with @ngrx
+# ngrx-ducks: A proposal for the ducks bundles in Angular with @ngrx (v2)
 
-This document is based on the original [ducks](https://github.com/erikras/ducks-modular-redux) proposal, and the [re-ducks](https://github.com/alexnm/re-ducks) extension, and was made thinking first about Angular, and the current Angular Style Guide, as such I will try to use the same vocabulary with the same meaning.
+The first version of this document was based on the original [ducks](https://github.com/erikras/ducks-modular-redux) proposal, and the [re-ducks](https://github.com/alexnm/re-ducks) extension, and was made thinking first about Angular, and the Angular Style Guide. You can find the that version in [v1 branch](/michaeljota/ngrx-ducks/tree/v1).
 
 ---
 
@@ -8,26 +8,24 @@ This document is based on the original [ducks](https://github.com/erikras/ducks-
 
 A duck is a module proposal to bundle redux related code, reducer, actions, and actions types. The original proposal follow this simple rules:
 
-* MUST export default a function called reducer().
-* MUST export its action creators as functions.
-* MUST have action types in the form. `npm-module-or-app/reducer/ACTION_TYPE`
-* MAY export its action types as `UPPER_SNAKE_CASE`, if an external reducer needs to listen for them, or if it is a published reusable library.
+- MUST export default a function called reducer().
+- MUST export its action creators as functions.
+- MUST have action types in the form. `npm-module-or-app/reducer/ACTION_TYPE`
+- MAY export its action types as `UPPER_SNAKE_CASE`, if an external reducer needs to listen for them, or if it is a published reusable library.
 
 Re-ducks extension is a proposal to work with a feature folder structure. Instead of using a file, you may use a folder, with an index file as a barrel for the duck, but exporting nearly the same.
 
-However, some of these rules are not usable in Angular, and others can be improved to take full advantage of the Typescript and Angular.
+The current schematics of ngrx allows to create all the members of a _duck_ according to the re-ducks extension. However, the default behavior doesn't provide an standard way to organize them, but instead the only option do so, organize them by folder, instead of by feature.
 
-* `default` exports doesn't work with AOT.
-* `function` creators does not allow to use Typescript type discrimination. You could create and return an interface to use this, but Angular Style Guide discourage the use of interfaces.
-* Action Types can be expressed as Typescript strings `enums`.
-* `UPPER_SNAKE_CASE` is discourage by Angular Style Guide.
+The previous version of this document have something called "Dispatcher". However, the concept is like the "Facade", introduced by [Thomas Burleson](https://twitter.com/ThomasBurleson) in [NgRx + Facades: Better State Management](https://medium.com/@thomasburlesonIA/ngrx-facades-better-state-management-82a04b9a1e39). In both, the intention is to hide the store implementation and use a service from the component to access it instead.
 
 ---
+
 ## Style Guide
 
-As I said, I will use Angular Style Guide as the main document. I will use additional vocabulary.
+The follow will extend and consider the Angular Style Guide as the main document. It will use additional vocabulary.
 
-* *Extension* Notes that extend the rule adapting it to use with `ngrx`.
+- _Extension_ Notes that extend the rule adapting it to use with `ngrx`.
 
 ## Naming
 
@@ -35,45 +33,41 @@ As I said, I will use Angular Style Guide as the main document. I will use addit
 
 ##### Extension: [Style 02-02](https://angular.io/guide/styleguide#style-02-02)
 
-*Consider* use conventional type names for store related code, including `actions`, `effects`, `reducer`, `selectors` and `dispatcher`.
+_Consider_ use conventional type names for store related code, including `actions`, `effect`, `reducer`, `selectors` and `facade`.
 
-*Why?* Those type names represents a duck.
+_Why?_ Those type names represents a duck.
 
 ### Service names
 
 ##### Extension: [Style 02-04](https://angular.io/guide/styleguide#style-02-04)
 
-*Avoid* naming files for store related services with the `.service` suffix.
+_Avoid_ naming files for store related services with the `.service` suffix.
 
-*Why?* Consistency with the duck naming, and the Style 02-02 [*extension*]
+_Why?_ Consistency with the duck naming, and the Style 02-02 [*extension*]
 
-### Angular *NgModule* names
+### Angular _NgModule_ names
 
 ##### Extension: [Style 02-12](https://angular.io/guide/styleguide#style-02-12)
 
-*Do* suffix the name a Store module with `StoreModule`.
+_Do_ suffix the name a Store module with `StoreModule`.
 
-*Do* end the file name of a Store module with `-store.module`. 
+_Do_ end the file name of a Store module with `-store.module`.
 
 ### Interfaces
 
 ##### Extension [Style 03-03](https://angular.io/guide/styleguide#style-03-03)
 
-*Avoid* declaring the states of the store and reducers as an interface.
+_Consider_ declaring the state of the store and reducers as a class.
 
-*Consider* declaring the state of the store and reducers as a class.
+_Consider_ using the class properties to initialize the states.
 
-*Consider* using the class properties to initialize the states.
+_Do_ initialize the state creating a new instance of the class inside a new object using spread operator.
 
-*Do* initialize the state creating a new instance of the class inside a new object using spread operator.
+_Why?_ Using spread operator ensures that you are using a serializable object.
 
-*Why?* Using spread operator ensures that you are initializing the state as a POJO.
+_Why?_ Initialize all the state properties.
 
-*Why?* Angular Compiler needs to statically analyze the code.
-
-*Why?* You make sure you initiate all the state properties.
-
-*Why?* Reduce the boilerplate code.
+_Why?_ Reduce the boilerplate code.
 
 ```typescript
 // Avoid
@@ -85,12 +79,14 @@ export const initialState: AppState = {
   count: 0,
 };
 ```
+
 ```typescript
 // Consider
 export class AppState {
   count: number = 0;
 }
 ```
+
 ```typescript
 // Avoid
 /* feature/component/component.reducer.ts */
@@ -118,6 +114,7 @@ const initialFeatureState: FeatureState = {
   component: initialComponentState,
 };
 ```
+
 ```typescript
 // Consider
 /* feature/component/component.reducer.ts */
@@ -132,6 +129,7 @@ class FeatureState {
   component = new ComponentState();
 }
 ```
+
 ```typescript
 // Do
 @NgModule({
@@ -148,25 +146,24 @@ class FeatureState {
 export class AppStoreModule {}
 ```
 
+> Currently the ngrx schematics produces reducers with the state as an interface, and the initial state as an object. You could however replace the produced code with a class, but do what works for you, and be consistent with that.
+
 ### Overall structural guidelines
 
 ##### Extension [Style 04-06](https://angular.io/guide/styleguide#style-04-06)
 
-*Consider* putting the duck files in the component folder.
+_Consider_ grouping the ducks files the same way you are grouping your components.
 
-*Why?* Duck files most of the times are used by a single component.
+_Consider_ grouping the duck files in the component folder, only if the ducks are component related, _or_ you are grouping your components in top-level folders aside from feature module file declaration.
+
+_Consider_ grouping the duck files in feature folder, inside a ducks container folder aside from feature module file declaration, only if you are grouping your components in a components container folder.
+
+_Why?_ The Angular Style guide suggest organize the components in top-level folders aside from the feature module file declaration.
+
+_Why?_ The Angular Style guide also suggest no more than seven files in each folder.
 
 ```
-~ Avoid ~
-feature
- |- feature.module.ts
- |- component
- |  |- component.component.ts|html|css|spec.ts
- |- reducers
-    |- component.reducer|actions|effects|selectors.ts
-```
-```
-~ Consider ~
+~ Consider Option 1~
 feature
  |- feature.module.ts
  |- component
@@ -174,30 +171,41 @@ feature
     |- component.reducer|actions|effects|selectors.ts
 ```
 
+```
+~ Consider Option 2 ~
+feature
+ |- feature.module.ts
+ |- components
+ |  |- my-component
+ |  |  |- my-component.component.ts|html|css|spec.ts
+ |- ducks
+ |  |- my-duck
+ |  |  |- my-duck.reducer|actions|effects|selectors|facade.ts
+```
+
 ### Feature modules
 
 ##### Extension [Style 04-09](https://angular.io/guide/styleguide#style-04-09)
 
-*Consider* creating a feature store module.
+_Consider_ creating a feature store module.
 
-*No additional whys besides the rules have*
+_No additional whys besides the rules have_
 
 ```typescript
 // Avoid
 /* feature/feature.reducer.ts */
 export class FeatureState {
-  component = new ComponentState();
+  duck = new DuckState();
 }
 
-export function featureReducer(state) {
-  return state;
-}
+export const featureReducer = createReducer({ ...new FeatureState() }, {});
+
 /* app.module.ts */
-import { NgModule } from '@angular/core';
-import { ActionReducerMap, MetaReducer, StoreModule } from '@ngrx/store';
-import { EffectsModule } from '@ngrx/effects';
-import { StoreDevtoolsModule } from '@ngrx/store-devtools';
-import { FeatureState, featureReducer } from './feature/feature.reducer';
+import { NgModule } from "@angular/core";
+import { ActionReducerMap, MetaReducer, StoreModule } from "@ngrx/store";
+import { EffectsModule } from "@ngrx/effects";
+import { StoreDevtoolsModule } from "@ngrx/store-devtools";
+import { FeatureState, featureReducer } from "./feature/feature.reducer";
 
 export class AppState {
   feature = new FeatureState();
@@ -222,24 +230,25 @@ const metaReducers: MetaReducer<AppState>[] = [];
 })
 export class AppStoreModule {}
 ```
+
 ```typescript
 // Consider
 /* feature/feature-store.ts */
-import { NgModule } from '@angular/core';
+import { NgModule } from "@angular/core";
 import {
   ActionReducerMap,
   createFeatureSelector,
   MetaReducer,
   StoreModule,
-} from '@ngrx/store';
-import { EffectsModule } from '@ngrx/effects';
+} from "@ngrx/store";
+import { EffectsModule } from "@ngrx/effects";
 
 import {
   ComponentState,
   componentReducer,
-} from './component/component.reducer';
+} from "./component/component.reducer";
 
-import { ComponentEffects } from './component/component.effects';
+import { ComponentEffects } from "./component/component.effects";
 
 class FeatureState {
   component = new ComponentState();
@@ -249,13 +258,13 @@ const featureReducers: ActionReducerMap<FeatureState> = {
   component: componentReducer,
 };
 
-export const heroesState = createFeatureSelector<FeatureState>('feature');
+export const heroesState = createFeatureSelector<FeatureState>("feature");
 
 const metaReducers: MetaReducer<FeatureState>[] = [];
 
 @NgModule({
   imports: [
-    StoreModule.forFeature('feature', featureReducers, {
+    StoreModule.forFeature("feature", featureReducers, {
       metaReducers,
       initialState: { ...new FeatureState() },
     }),
@@ -265,66 +274,67 @@ const metaReducers: MetaReducer<FeatureState>[] = [];
 export class HeroesStoreModule {}
 ```
 
+> Currently the ngrx schematics produces a reducers file, with the state and reduce definition, and setup the store module within the main module you declare. You could however replace the produced code with the recommendations, but do what works for you, and be consistent with that.
+
 ### Shared feature module
 
 ##### Extension [Style 04-10](https://angular.io/guide/styleguide#style-04-10)
 
-*Consider* putting the duck files you must use in the application wide here.
+_Consider_ putting the duck files you must use in the application wide here.
 
-*Why?* Using shared modules to shared ducks makes sense.
+_Why?_ Using shared modules to shared ducks makes sense.
 
 ### Delegate complex component logic to services
 
 ##### Extension [Style 05-15](https://angular.io/guide/styleguide#style-05-15)
 
-*Consider* using store to manage the state of the component.
+_Consider_ using store to manage the state of the component.
 
-*Why?* Allows you to reduce the number of the dependencies.
+_Why?_ Allows you to reduce the number of the dependencies.
 
-*Why?* Components are easier to test, as the only show a given state.
+_Why?_ Components are easier to test, as the only show a given state.
 
 ```typescript
 // Avoid
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit } from "@angular/core";
 
-import { Model, ComponentService } from '../shared';
+import { Model } from "~app/model";
+import { MyServiceService } from "./my-service.service";
 
 @Component({
-  selector: 'app-component',
-  templateUrl: './component.component.html',
+  selector: "app-component",
+  templateUrl: "./my-component.component.html",
 })
-export class Component implements OnInit {
+export class MyComponent implements OnInit {
   list: Model[];
-  constructor(private service: Component) {}
-  
+  constructor(private service: MyServiceService) {}
+
   ngOnInit() {
     this.list = [];
-    this.service.getAll()
-      .subscribe(list => this.list = list);
+    this.service.getAll().subscribe((list) => (this.list = list));
   }
 }
 ```
+
 ```typescript
 // Consider
-import { Component, OnInit } from '@angular/core';
-import { Store } from '@ngrx/store';
+import { Component, OnInit } from "@angular/core";
+import { Store } from "@ngrx/store";
 
-import { AppState } from '../../app-store.module';
+import { Model } from "~app/model";
 
-import { Model } from '../shared';
-
-import { selectList } from './component.selectors';
+import { selectModelList } from "./component.selectors";
 
 @Component({
-  selector: 'app-component',
-  templateUrl: './component.component.html',
+  selector: "app-component",
+  templateUrl: "./component.component.html",
 })
 export class Component implements OnInit {
   list: Observable<Model[]>;
-  constructor(private readonly store: Store<AppState>) {}
-  
+  constructor(private readonly store: Store) {}
+
   ngOnInit() {
-    this.heroes = this.store.select(selectHeroesList);
+    this.list = this.store.select(selectModelList);
   }
 }
 ```
@@ -333,116 +343,139 @@ export class Component implements OnInit {
 
 Useful tips for Angular applications with `@ngrx` platform.
 
-### Actions and Actions Types
+> The order of the styles has been updated to introduce better the relationship between each feature.
+
+### Reducers
 
 ##### Style NGRX-01
 
-*Consider* creating all the actions as classes.
+_Consider_ using `createReducer` function to create the reducer.
 
-*Consider* using a type union of all actions classes.
+_Consider_ placing the reducer inside the store module configuration.
 
-*Consider* using strings enums to declaring the actions types.
+_Consider_ declaring the initial state of the reducer as a class.
 
-*Consider* prefix the value of all enums keys with a unique name.
+_Consider_ initializing the state of the module reducer with properties calling a new instance of the component reducer states.
 
-*Consider* making the unique name related to the component.
+_Why?_ Module reducers should only import the components reducers and initialize them.
 
-*Consider* exporting the actions, the type and the enum of the actions types from an action file.
+_Why?_ Class allows to initialize the state of the reducer in a cleaner way.
 
-*Consider* using named properties instead of generic payload
+```typescript
+// Consider
+/* duck.reducer.ts */
+import { ActionReducer } from "@ngrx/store";
 
-*Why?* Using classes for actions allow to take advantage of the discriminatory types of Typescript.
+import { Model } from "~app/model";
+
+export class DuckState {
+  public readonly model = new Model();
+}
+
+export const initialState = { ...new DuckState() };
+
+export const duckReducer = createReducer(initialState);
+```
+
+> Currently the ngrx schematics produces a reducers file, with the state and reduce definition, and setup the store module within the main module you declare. You could however replace the produced code with the recommendations, but do what works for you, and be consistent with that.
+
+### Actions and Actions Types
+
+##### Style NGRX-02
+
+_Consider_ using the `createAction` function to create action functions.
+
+_Consider_ name your actions with a regular and predictable pattern.
+
+_Consider_ use human readable names for the exported members.
+
+_Why?_ Using the `createAction` allow to take advantage of ngrx schematics.
+
+_Why?_ A pattern such as `[Duck/UI] Action` make easier to locate related code and debugging.
 
 ```typescript
 // Consider
 /* component.actions.ts */
-import { Action } from '@ngrx/store';
+import { createAction, props } from "@ngrx/store";
 
-import { Model } from './../shared/model';
+export const uiAction = createAction("[Duck/UI] UI Action", props<Props>());
 
-export enum ComponentActions {
-  Load = '[Component] Load',
-  LoadSuccess = '[Component] Load Success',
-  Save = '[Component] Save',
-  SaveSuccess = '[Component] Save Success',
-}
-
-export type ComponentActionType =
-  | LoadModel
-  | LoadModelSuccess
-  | SaveModel
-  | SaveModelSuccess;
-
-export class LoadModel implements Action {
-  public readonly type = ComponentActions.Load;
-  constructor(public readonly modelId: string) {}
-}
-
-export class LoadModelSuccess implements Action {
-  public readonly type = ComponentActions.LoadSuccess;
-  constructor(public readonly model: Readonly<Model>) {}
-}
-
-export class SaveModel implements Action {
-  public readonly type = ComponentActions.Save;
-  constructor(public readonly model: Readonly<Model>) {}
-}
-
-export class SaveModelSuccess implements Action {
-  public readonly type = ComponentActions.SaveSuccess;
-}
+export const apiAction = createAction("[Duck/API] API Action", props<Props>());
 ```
 
-### Dispatcher
+### Selectors
 
-##### Style NGRX-02
+##### Style NGRX-03
 
-*Consider* creating a dispatcher service to dispatch actions.
+_Consider_ using the `createFeatureSelector` function to select the feature state.
 
-*Consider* use human readable names for the methods in the dispatcher.
+_Consider_ exporting the feature selector from the reducer configuration.
 
-*Consider* exporting the dispatcher service from a dispatcher file.
+_Consider_ using the `createSelector` function to select additional parts of the feature state.
 
-*Consider* registering the dispatcher in the feature module as a provider.
+_Consider_ grouping all your selectors in a selectors file.
 
-*Consider* using memoize functions methods.
+_Why?_ The `createFeatureSelector` function takes a generic type argument, and a string argument to select the piece of state, reducing the chances of a circular dependency.
 
-*Why?* A dispatcher service allows you to take advantage of Angular Dependency Injection.
+_Why?_ Selectors are a type safe approach to return an observable of the feature state.
 
-*Why?* You could change your actions, without modifying your dispatcher.
+_Why?_ The `createSelector` function is a memoized function, resulting in a better performance when selecting the same piece multiple times, allowing to use`async` operator multiple times.
 
-*Why?* Allows you to use the dispatcher in your components, and in your effects services.
+```typescript
+// Consider
+/* feature-store.module.ts */
+import { createFeatureSelector } from "@ngrx/store";
+
+export const selectFeatureState = createFeatureSelector("feature");
+
+/* duck.selectors.ts */
+import { createSelector } from "@ngrx/store";
+import { selectFeatureState } from "somewhere/feature-store.module";
+
+export const selectList = createSelector(
+  selectFeatureState,
+  (state) => state.list
+);
+```
+
+### Facade
+
+##### Style NGRX-04
+
+_Consider_ creating a facade service to access the store.
+
+_Consider_ use the same name for actions an selectors.
+
+_Consider_ exporting the facade service from a facade file.
+
+_Consider_ provide the facade in root.
+
+_Consider_ using memoize functions methods.
+
+_Why?_ A dispatcher service allows you to take advantage of Angular Dependency Injection.
+
+_Why?_ You could change your actions, without modifying your dispatcher.
+
+_Why?_ Allows you to use the dispatcher in your components, and in your effects services.
 
 ```typescript
 // Consider
 /* component.dispatcher.ts */
-import { Injectable } from '@angular/core';
+import { Injectable } from "@angular/core";
 
-import { Model } from './../shared/model';
+import { Model } from "~app/model";
 
-import {
-  LoadModel,
-  LoadModelSuccess,
-  SaveModel,
-  SaveModelSuccess,
-} from './component.actions';
+import { loadList } from "./component.actions";
+import { selectList } from "./component.selectors";
 
 @Injectable()
-export class ComponentDispatcher {
-  public load(id: string) {
-    return new LoadModel(id);
-  }
+export class DuckFacade {
+  list$ = this.store.select(selectList);
 
-  public loadSuccess(data: Model) {
-    return new LoadModelSuccess(data);
-  }
+  constructor(private readonly store: Store) {}
 
-  public save(data: Model) {
-    return new SaveModel(data);
-  }
-
-  public saveSuccess() {
-    return new SaveModelSuccess();
+  loadList() {
+    this.store.dispatch(loadList());
   }
 }
 ```
@@ -451,134 +484,47 @@ export class ComponentDispatcher {
 
 ##### Style NGRX-03
 
-*Consider* using effects to integrate the results of all asynchronous operations with the state of the application.
+_Consider_ using `createEffect` function to create an effect configuration.
 
-*Avoid* importing directly the effects into the application.
+_Consider_ using effects to integrate the results of all asynchronous operations with the state of the application.
 
-*Why?* Using effects allows you practice the separation of concerns.
+_Avoid_ importing directly the effects into the application.
 
-*Why?* Effects does not need to be imported into the application. Only into the Effects Module configuration.
+_Why?_ The `createEffect` function returns an observable and it is analyzed by the ngrx in runtime to ensure it returns a correct value.
+
+_Why?_ The `createEffect` function doesn't need additional type annotations in runtime.
+
+_Why?_ Using effects allows you practice the separation of concerns.
+
+_Why?_ Effects does not need to be imported into the application. Only into the Effects Module configuration.
 
 ```typescript
 // Consider
-/* component.effects.ts */
-import { Injectable } from '@angular/core';
-import { Actions, Effect, ofType } from '@ngrx/effects';
-import { map, switchMap } from 'rxjs/operators';
-
-import { ComponentService } from './../shared/component.service';
-
-import {
-  ComponentActions,
-  ComponentActionType,
-  LoadModel,
-  SaveModel,
-} from './component.actions';
-import { ComponentDispatcher } from './component.dispatcher';
+/* duck.effects.ts */
+import { Inject, Injectable } from "@angular/core";
+import { Actions, createEffect, ofType } from "@ngrx/effects";
+import { loadList, loadListSuccess, loadListFailure } from "./duck.actions";
+import { concatMap } from "rxjs/operators";
+import { MyServiceService } from "~app/services/my-service.service";
 
 @Injectable()
-export class ComponentEffects {
-  constructor(
-    private readonly actions: Actions<ComponentActionType>,
-    private readonly service: ComponentService,
-    private readonly dispatcher: ComponentDispatcher,
-  ) {}
-
-  @Effect()
-  public readonly getModel = this.actions.pipe(
-    ofType<LoadModel>(ComponentActions.Load),
-    switchMap(({ modelId }) => this.service.get(modelId)),
-    map(model => this.dispatcher.loadSuccess(model)),
-  );
-
-  @Effect({ dispatch: false })
-  public readonly saveModel = this.actions.pipe(
-    ofType<SaveModel>(ComponentActions.Save),
-    switchMap(({ model }) => this.service.update(model.id, model)),
-  );
-}
-```
-
-### Reducers
-
-##### Style NGRX-04
-
-*Consider* placing a module reducer inside the store configuration.
-
-*Consider* using a component reducer aside the component that will use it.
-
-*Consider* declaring the initial state of the reducer as classes.
-
-*Consider* Initialize the state of the module reducer with properties calling a new instance of the component reducer states.
-
-*Why?* Module reducers should only import the components reducers and initialize them.
-
-*Why?* Classes allows to initialize the state of the reducer in a cleaner way.
-
-```typescript
-// Consider
-/* component.reducer.ts */
-import { ActionReducer } from '@ngrx/store';
-
-import { Model } from './../shared/model';
-
-import { ComponentType, ComponentActions } from './component.actions';
-
-export class ComponentState {
-  public readonly model: Readonly<Model> = new Model();
-}
-
-/**
- * @type {ActionReducer<ComponentState,ComponentType>}
- */
-export function componentReducer(
-  state: ComponentState,
-  action: ComponentType,
-): ComponentState {
-  switch (action.type) {
-    case ComponentActions.LoadSuccess:
-      return {
-        ...state,
-        model: action.model,
-      };
-    default:
-      return state;
-  }
-}
-```
-### Selectors
-
-##### Style NGRX-05
-
-*Consider* exporting a feature selector in the store configuration.
-
-*Consider* using `select` pipe operator with a function argument to select component state and properties.
-
-*Consider* create a new selector file only if you are using a composed or complex selectors.  
-
-*Why?* Selectors are a type safe approach to return an observable of the feature state.
-
-*Why?* pipe operators are typed so they are also a type safe approach to get the properties.
-
-```typescript
-// Consider
-/* feature-store.module.ts */
-...
-import { createFeatureSelector } from '@ngrx/store';
-...
-
-export const selectFeatureState = createFeatureSelector('feature');
-
-/* component.component.ts */
-...
-export class ComponentComponent {
-  models: Observable<Model[]>
-
-  constructor(private readonly store: Store) {
-    this.models = store.select(selectFeatureState).pipe(
-      select((state) => state.component.models),
+export class MetaEffects {
+  setMetaTags$ = createEffect(() => {
+    return this.actions$.pipe(
+      ofType(loadList),
+      concatMap(
+        this.myService.get().pipe(
+          map((list) => loadListSuccess({ list })),
+          catchError((error) => of(loadListFailure({ error })))
+        )
+      )
     );
-  }
+  });
+
+  constructor(
+    private readonly actions$: Actions,
+    private readonly myService: MyServiceService
+  ) {}
 }
 ```
 
@@ -586,27 +532,20 @@ export class ComponentComponent {
 
 ##### Style NGRX-06
 
-*Consider* using the `@ngrx/entity` module to create and handle entities.
+_Consider_ using the `@ngrx/entity` module to create and handle entities.
 
-*Consider* placing the entity adapter inside the reducer file.
+_Consider_ placing the entity adapter inside the reducer file.
 
-*Consider* exporting the selectors generated from the entity adapter.
+_Consider_ exporting the selectors generated from the entity adapter as one const value.
 
-*Consider* using `select` pipe operator and the entity adapter selectors to  select entities properties.
-
-*Why* The adapter is a function helper to manage the entity state, so you would need it there.
+_Why_ The adapter is a function helper to manage the entity state.
 
 ```typescript
 // Consider
 /* component.reducer.ts */
-import {
-  createEntityAdapter,
-  EntityState,
-  Dictionary,
-  Update,
-} from '@ngrx/entity';
+import { createEntityAdapter, EntityState, Dictionary } from "@ngrx/entity";
 
-import { Model } from '../model';
+import { Model } from "~app/model";
 
 const modelAdapter = createEntityAdapter<Model>();
 
@@ -617,32 +556,30 @@ export class ComponentState implements EntityState<Model> {
   public readonly entities: Dictionary<Model> = {};
   public readonly anotherProperty: boolean;
 }
-
 ```
-
 
 ### Stores
 
 ##### Style NGRX-07
 
-*Consider* use an Angular barrel module to setup the Store. 
+_Consider_ use an Angular module to setup the Store.
 
-*Consider* setup and export the state from the module.
+_Consider_ setup and export the state from the module.
 
-*Consider* setup and export the selector from the module.
+_Consider_ setup and export the selector from the module.
 
-*Why?* Barrel modules are a common practice in Angular, and a recommended way to keep your modules cleaner.
+_Why?_ Modules are a common practice in Angular, and a recommended way to keep your modules cleaner.
 
-*Why?* The store state, reducers and selectors will be easy to find after scaling.
+_Why?_ The store state, reducers and selectors will be easy to find after scaling.
 
 ```typescript
 // Avoid
 /* counter.ts */
-import { Action } from '@ngrx/store';
+import { Action } from "@ngrx/store";
 
-export const INCREMENT = 'INCREMENT';
-export const DECREMENT = 'DECREMENT';
-export const RESET = 'RESET';
+export const INCREMENT = "INCREMENT";
+export const DECREMENT = "DECREMENT";
+export const RESET = "RESET";
 
 export function counterReducer(state: number = 0, action: Action) {
   switch (action.type) {
@@ -661,15 +598,12 @@ export function counterReducer(state: number = 0, action: Action) {
 }
 
 /* app.module.ts */
-import { NgModule } from '@angular/core'
-import { StoreModule } from '@ngrx/store';
-import { counterReducer } from './counter';
+import { NgModule } from "@angular/core";
+import { StoreModule } from "@ngrx/store";
+import { counterReducer } from "./counter";
 
 @NgModule({
-  imports: [
-    BrowserModule,
-    StoreModule.forRoot({ count: counterReducer }),
-  ],
+  imports: [BrowserModule, StoreModule.forRoot({ count: counterReducer })],
 })
 export class AppModule {}
 ```
@@ -677,10 +611,10 @@ export class AppModule {}
 ```typescript
 // Consider
 /* app-store.module.ts */
-import { NgModule } from '@angular/core';
-import { ActionReducerMap, MetaReducer, StoreModule } from '@ngrx/store';
-import { EffectsModule } from '@ngrx/effects';
-import { StoreDevtoolsModule } from '@ngrx/store-devtools';
+import { NgModule } from "@angular/core";
+import { ActionReducerMap, MetaReducer, StoreModule } from "@ngrx/store";
+import { EffectsModule } from "@ngrx/effects";
+import { StoreDevtoolsModule } from "@ngrx/store-devtools";
 
 export class AppState {}
 
@@ -701,19 +635,18 @@ const metaReducers: MetaReducer<AppState>[] = [];
 export class AppStoreModule {}
 
 /* app.module.ts */
-import { NgModule } from '@angular/core'
-import { AppStoreModule } from './app-store.module';
+import { NgModule } from "@angular/core";
+import { AppStoreModule } from "./app-store.module";
 
 @NgModule({
-  imports: [
-    BrowserModule,
-    AppStoreModule,
-  ],
+  imports: [BrowserModule, AppStoreModule],
 })
 export class AppModule {}
 ```
 
------
-To-Do: 
-- The current amount of files is up-to the recommended by the Angular Style Guide.
-- There is not test files for the ducks.
+---
+
+Additional Info:
+
+- If you group the ducks along the components, the current amount of files is up-to the recommended by the Angular Style Guide.
+- Use the ngrx schematics whenever you can, as they will configure itself and will setup some test files for you.
